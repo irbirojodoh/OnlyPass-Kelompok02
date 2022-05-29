@@ -1,11 +1,10 @@
-PA#include <stdio.h>
-//#include <omp.h>
+#include <stdio.h>
+#include <omp.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdbool.h>
-//#include <conio.h>
-//#include <curses.h>
+#include <conio.h>
 #include <ctype.h>
 
 typedef struct listPassword{
@@ -21,100 +20,29 @@ struct Node {
     char idAkun[30];
     int key;
     int countPwd;
-    List password[50];
+    List password[50]; //Maksimal 50 password dalam satu akun
     struct Node* next;
 };
 
-void writeCount(int count){
-    const char* fileCount     = "{\n\t\"COUNT\": %d}\n";
-    int i;
-    FILE* file;
-    fopen_s(&file, "Count.dat", "w");
-    fprintf_s(file, fileCount, count);
-    fclose(file);
-}
-void readCount(int *count){
-    const char* fileCount     = "{\n\t\"COUNT\": %d}\n";
-    int i, temp;
-    FILE* file;
-    fopen_s(&file, "Count.dat", "r");
-    fscanf_s(file, fileCount, count);
-    fclose(file);
-}
-void writeFile(struct Node* node, int count){
-	int i, j, k, temp;
-    FILE* file;
-    file = fopen("akun.txt", "w");
-    for (i = 0; i < count; i++) {
-        fprintf(file,"%s %s %s %d %d;",node->namaAkun,node->idAkun,node->dataPwd,node->key,node->countPwd);
-        for (j = 0; j < node->countPwd; j++){
-        	if(node->password[j].changed == true){
-        		temp = 1;
-			}
-			else if(node->password[j].changed == false){
-				temp = 0;
-			}
-        	fprintf(file,"%s %s %d %d;",node->password[j].namaPwd,node->password[j].idPwd,node->password[j].keyPwd,temp);
-        	if(temp == 1){
-        		for(k=0;k<2;k++){
-        			fprintf(file,"%s ",node->password[j].dataPwd[k]);
-				}
-			}else if(temp == 0){
-				fprintf(file,"%s ",node->password[j].dataPwd[1]);
-			}
-		}
-		fprintf(file,"\n");
-		node = node->next;
-    }
-    fclose(file);
-}
-void readFile(struct Node** node, int count) {
-    int i, j, k, temp;
-    FILE* file;
-    file = fopen("akun.txt", "r");
-    for (i = 0; i < count; i++) {
-        fscanf(file,"%s %s %s %d %d ",(*node)->namaAkun,(*node)->idAkun,(*node)->dataPwd,&(*node)->key,&(*node)->countPwd);
-        for (j = 0; j < (*node)->countPwd; j++){
-        	fscanf(file,"%s %s %d %d ",(*node)->password[j].namaPwd,(*node)->password[j].idPwd,&(*node)->password[j].keyPwd,&temp);
-        	if(temp == 1){
-        		for(k=0;k<2;k++){
-        			fscanf(file,"%s ",(*node)->password[j].dataPwd[k]);
-				}
-				(*node)->password[j].changed = true;
-			}else if(temp == 0){
-				fscanf(file,"%s ",(*node)->password[j].dataPwd[1]);
-				(*node)->password[j].changed = false;
-			}
-		}
-		fprintf(file,"\n");
-		(*node) = (*node)->next;
-    }
-    fclose(file);
-}
+//FUNCTION UTAMA
+void loadData(struct Node** headRef, struct Node temp);
 int addAccount (struct Node** headRef);
 int enterAccount(struct Node* headRef, int countAccount);
 void mainMenu(struct Node** headRef, int numAccount);
-void printList(struct Node* node);
 void helpDepan();
 void helpMain();
 char* Strcasestr(const char* haystack, const char* needle);
-void push(struct Node** head_ref, char new_data[100], char new_ID[100], char new_name[100], int new_key);
-struct Node* partition(struct Node* head, struct Node* end, struct Node** newHead, struct Node** newEnd);
-struct Node* getTail(struct Node* cur);
-struct Node* quickSortRecur(struct Node* head, struct Node* end);
-void quickSort(struct Node** headRef);
 void randomPasswordGeneration(int N, char pass[100]);
 char grade(char pass[100], unsigned long len, char tempStrength[]);
-//SORTING===============================================
+//SORTING DAN SEARCHING===============================================
 void swapChar(char a[100], char b[100]);
 void swapInt(int *a, int *b);
 void swapBool(bool *a, bool *b);
 void quicksortArr(struct Node** node,int start, int end);
+void searchPass(struct Node* node);
 //PASSWORD===============================================
 int savePwd(struct Node** node, int passNum);
-void searchPass(struct Node* node);
 int keygen();
-void printNode(struct Node* node);
 void changePass(struct Node** node, int passNum);
 void searchPass(struct Node* node);
 void decrypt(char pass[100], unsigned long len, int key);
@@ -122,10 +50,142 @@ void encrypt(char pass[100], unsigned long len, int key);
 void lookPwd(struct Node* node);
 int viewSetting(struct Node* node);
 
+
+//FUNCTION UNTUK BACA TULIS COUNT AKUN=================================================================================================================
+void writeCount(int count){
+    const char* fileCount     = "{\n\t\"COUNTACCOUNT\": %d}\n";
+    int i;
+    FILE* file;
+    fopen_s(&file, "Count.dat", "w");
+    fprintf_s(file, fileCount, count);
+    fclose(file);
+}
+void readCount(int *count){
+    const char* fileCount     = "{\n\t\"COUNTACCOUNT\": %d}\n";
+    int i, temp;
+    FILE* file;
+    fopen_s(&file, "Count.dat", "r");
+    fscanf_s(file, fileCount, count);
+    fclose(file);
+}
+
+//FUNCTION UNTUK BACA TULIS DATA AKUN===================================================================================================================
+void writeFile(struct Node* node, int count){
+    const char* akunOutput = "{\n\t\"namaAkun\": \"%s\",\n\t\"idAkun\": \"%s\", \n\t\"dataPwd\": \"%s\", \n\t\"key\": %d, \n\t\"countPwd\": %d\n";
+    const char* passwordOutput = "\n\t\"namaPwd\": \"%s\",\n\t\"idPwd\": \"%s\", \n\t\"keyPwd\": %d,\n\t\"dataPwd\": \"%s\"";
+    int i, j;
+    FILE* file;
+    fopen_s(&file, "akun.dat", "w");
+    
+    for (i = 0; i < count; i++) {
+        fprintf_s(file, akunOutput, node->namaAkun,node->idAkun,node->dataPwd,node->key,node->countPwd);
+        for (j = 0; j < node->countPwd; j++){
+            fprintf_s(file, passwordOutput, node->password[j].namaPwd,node->password[j].idPwd,node->password[j].keyPwd,node->password[j].dataPwd[1]);
+        }
+        fprintf_s(file,"\n}\n\n");
+        node = node->next;
+    }
+    fclose(file);
+}
+void readFile(struct Node temp[], int count) {
+    const char* akunOutput = "{\n\t\"namaAkun\": \"%[^\"]\",\n\t\"idAkun\": \"%[^\"]\", \n\t\"dataPwd\": \"%[^\"]\", \n\t\"key\": %d, \n\t\"countPwd\": %d\n";
+    const char* passwordOutput = "\n\t\"namaPwd\": \"%[^\"]\",\n\t\"idPwd\": \"%[^\"]\", \n\t\"keyPwd\": %d,\n\t\"dataPwd\": \"%[^\"]\"";
+    int i, j;
+    FILE* file;
+    fopen_s(&file, "akun.dat", "r");
+    //DATA DILETAKAN DI STRUCT SEMENTARA
+    for (i = 0; i < count; i++) {
+        fscanf_s(file, akunOutput, temp[i].namaAkun, 30, temp[i].idAkun, 30, temp[i].dataPwd, 100, &temp[i].key, &temp[i].countPwd);
+        printf("{\n\t\"namaAkun\": \"%s\",\n\t\"idAkun\": \"%s\", \n\t\"dataPwd\": \"%s\", \n\t\"key\": %d, \n\t\"countPwd\": %d\n",
+        temp[i].namaAkun, temp[i].idAkun, temp[i].dataPwd,temp[i].key,temp[i].countPwd);
+        for (j = 0; j < temp[i].countPwd; j++){
+            fscanf_s(file, passwordOutput, temp[i].password[j].namaPwd, 30, temp[i].password[j].idPwd, 30, &temp[i].password[j].keyPwd,temp[i].password[j].dataPwd[1], 100);
+            printf("\n\t\"namaPwd\": \"%s\",\n\t\"idPwd\": \"%s\", \n\t\"keyPwd\": %d,\n\t\"dataPwd\": \"%s\"",
+            temp[i].password[j].namaPwd, temp[i].password[j].idPwd, temp[i].password[j].keyPwd, temp[i].password[j].dataPwd[1]);
+        }
+        fscanf_s(file,"\n}\n\n");
+        printf("\n}\n\n");
+    }
+    fclose(file);
+}
+
+//FUNCTION UNTUK MELOAD DATA DARI FILE
+void loadData(struct Node** headRef, struct Node temp){
+    int i;
+    struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
+    struct Node *last = *headRef;
+    //DATA DARI STRUCT DIPINDAHKAN KE LINKED LIST
+    strcpy(new_node->namaAkun, temp.namaAkun);
+    strcpy(new_node->idAkun, temp.idAkun);
+    strcpy(new_node->dataPwd, temp.dataPwd);
+    new_node->key =temp.key;
+    new_node->countPwd =temp.countPwd;
+
+    for(i =0; i<new_node->countPwd; i++){
+        strcpy(new_node->password[i].namaPwd, temp.password[i].namaPwd);
+        strcpy(new_node->password[i].idPwd, temp.password[i].idPwd);
+        strcpy(new_node->password[i].dataPwd[0], temp.password[i].dataPwd[0]);
+        strcpy(new_node->password[i].dataPwd[1], temp.password[i].dataPwd[1]);
+        new_node->password[i].keyPwd = temp.password[i].keyPwd;
+    }
+    new_node->next = NULL;
+    if (*headRef == NULL){
+          *headRef = new_node;
+          return;
+    }
+    //menaruh akun baru ke node paling akhir
+    while (last->next != NULL)
+        last = last->next;
+            
+    last->next = new_node;
+    return;
+}
+
+void startAnimation(){                  //Function untuk menampilkan animasi opening
+    system("color E");
+    system("CLS");
+    printf("\t==================");
+    Sleep(200);
+    printf("==================");
+    Sleep(200);
+    printf("==================\n");
+    Sleep(200);
+    printf("\t||              Welcome to OnlyPass!                ||\n");
+    Sleep(500);
+    printf("\t||                  Presented By:                   ||\n");
+    Sleep(500);
+    printf("\t||              Kelompok 2 Proglan 2                ||\n");
+    Sleep(500);
+    printf("\t==================");
+    Sleep(200);
+    printf("==================");
+    Sleep(200);
+    printf("==================\n\n\t");
+    Sleep(200);
+    system("Pause");
+}
+
+//DRIVER FUNCTION==================================================================================================================================
 int main(){
-    int input, loop = 0, countAccount = 0;
+    int input, i, loop = 0, countAccount = 0;
     readCount(&countAccount);
     struct Node* head = NULL;
+    struct Node temp[countAccount];
+    readFile(temp, countAccount);
+    for(i = 0; i < countAccount; i++){
+        loadData(&head, temp[i]);
+    }
+    printf("\t\t============ Check status multithreading ==============");
+    #pragma omp parallel
+    {
+        printf("\n\t\tThread no. %d", omp_get_thread_num());
+        #pragma omp barrier
+        #pragma omp single
+        printf("\n\t\t%d thread aktif", omp_get_num_threads());
+    
+    }
+    Sleep(800);
+    startAnimation();
     //readFile(&head, countAccount);
        do{
         do{
@@ -135,7 +195,8 @@ int main(){
                    "\t\t|              1. Masuk Akun                         |\n"
                    "\t\t|              2. Buat Akun                          |\n"
                    "\t\t|              3. Bantuan                            |\n"
-                   "\t\t|              4. Keluar                             |\n"
+                   "\t\t|              4. Hapus Akun                         |\n"
+                   "\t\t|              5. Keluar Bantuan                     |\n"
                    "\t\t======================================================\n");
             printf("\t\t> ");
             loop = 0;
@@ -146,9 +207,11 @@ int main(){
                     printf("\t\tData Akun Masih Kosong!!\n\n\t\t");
                     loop = 1;
                     system("Pause");
-                    input = addAccount(&head);
+                    do{
+                        input = addAccount(&head);
+                    }while(input == 2);
                     if(input == 1)
-                		countAccount++;
+                        countAccount++;
                 }
             }
         }while(loop == 1);
@@ -164,15 +227,18 @@ int main(){
             case 2:
                 do{
                     input = addAccount(&head);
-                }while(input == 0);
-                countAccount++;
+                }while(input == 2);
+                if(input == 1)
+                        countAccount++;
                 break;
             case 3:
-            	helpDepan();
+                helpDepan();
                 break;
-            case 4:
-            	writeFile(head, countAccount);
-            	writeCount(countAccount);
+            case 4: deleteAcc(&head, countAccount);
+                
+            case 5:
+                writeFile(head, countAccount);
+                writeCount(countAccount);
                 return 0;
             default:
                 break;
@@ -180,34 +246,34 @@ int main(){
       }while(loop == 0);
     return 0;
 }
-//====================================================================================
-//USER
-//====================================================================================
+
+//FUNCTION MENAMBAHKAN NODE AKUN====================================================================================
 int addAccount (struct Node** headRef){ //Function untuk menambahkan akun berupa Node
     struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
     struct Node *last = *headRef;
-    int tempKey = keygen(), input;
+    int tempKey = keygen(), input, i;
     char tempPass[100] = {0};
     char strength[15];
+    char tempC;
     
     system("CLS");
-    printf("\n\t\t================ Sign Up ===================\n");
+    printf("\n\t\t================ Sign Upd ===================\n");
     printf("\t\tNama\t\t: ");
     scanf(" %[^\n]s", new_node -> namaAkun );
     printf("\t\tID Akun\t\t: ");
     scanf(" %[^\n]s", new_node -> idAkun );
     printf("\t\tPassword\t: ");
     scanf(" %[^\n]s", tempPass);
-        
-//    do{
-//        if((tempC = getch()) != 13){
-//            printf("*");
-//            tempPass[i] = tempC;
-//            i++;
-//        }
-//    }while(tempC != 13);
-        
-    printf("\n\t\t============================================\n");
+    /*    //implementasi masking password tidak jadi digunakan
+    do{
+        if((tempC = getch()) != 13){
+            printf("*");
+            tempPass[i] = tempC;
+            i++;
+        }
+    }while(tempC != 13);
+    */
+    printf("\t\t============================================\n");
     printf("\t\tMemeriksa Password...\n\t\t");
     system("Pause");
     system("CLS");
@@ -218,11 +284,13 @@ int addAccount (struct Node** headRef){ //Function untuk menambahkan akun berupa
     grade(tempPass, strlen(tempPass), strength);
     printf("\t\tKekuatan Password adalah -%s-", strength);
     printf("\n\t\t============================================");
-    printf("\n\t\tLanjut? (1=Y, 0=N)\n\t\t> ");
+    printf("\n\t\tLanjut? (1=Y, 0=N, 2=Ulangi)\n\t\t> ");
     scanf("%d", &input);
         
     if(input == 0){
         return 0;
+    }else if(input == 2){
+        return 2;
     }
     
     encrypt(tempPass, strlen(tempPass), tempKey);
@@ -233,7 +301,7 @@ int addAccount (struct Node** headRef){ //Function untuk menambahkan akun berupa
     new_node -> countPwd = 0;
        
     if (*headRef == NULL){
-          *headRef = new_node;
+        *headRef = new_node;
         return 1;
     }
     
@@ -244,7 +312,80 @@ int addAccount (struct Node** headRef){ //Function untuk menambahkan akun berupa
     last->next = new_node;
     return 1;
 }
-int enterAccount(struct Node* headRef, int countAccount) {   //BLM JALAN ERROR DI NODE NGECEK ID/PASSWORDNYA
+
+//FUNCTION UNTUK MENGHAPUS AKUN============================================================================
+void deleteAcc(struct Node** headRef, int countAccount) {
+    int i, indicator = 0;
+    bool loop = false;
+    char tempID[30], tempPass[100], tempPass2[100];
+    struct Node *ptr = *headRef;
+    struct Node *current = *headRef;
+    struct Node *previous = *headRef;
+    if (*headRef == NULL){
+        printf("TIDAK ADA AKUN");
+    }
+    else{
+        do{
+            i = 0;
+            ptr = *headRef;
+            indicator = 0;
+            system("CLS");
+            printf("\n\t\t              ==== OnlyPass ====   \n");
+            printf("\t\t======================================================\n");
+            printf("\t\tID Akun\t\t: ");
+            scanf(" %[^\n]s", tempID);
+            printf("\t\tPassword\t: ");
+            scanf(" %[^\n]s", tempPass);
+            printf("\t\t======================================================\n");
+            
+            while(ptr != NULL && i != countAccount && indicator == 0){
+                strcpy(tempPass2, ptr->dataPwd);
+                decrypt(tempPass2, strlen(tempPass2), ptr->key);
+                if(strcmp(tempID, ptr->idAkun)==0 && strcmp(tempPass2, tempPass)==0){
+                    indicator = 1;
+                    i++;
+                }
+                else{
+                    i++;
+                    ptr = ptr->next;
+                }
+            }
+            if(ptr == NULL){
+                loop = true;
+            }
+            if(loop == true){
+                printf("\t\tAwas: ID atau Password Salah!!\n");
+                printf("\n\t\tCoba Lagi? (1=Y, 0=N)\n\t\t> ");
+                scanf("%d", &i);
+                if(i == 1){
+                    loop = true;
+                }
+            }
+        }while(loop == true);
+        if(i == 1){
+            *headRef = current -> next;
+            free(current);
+            current = NULL;
+        }
+        else{
+            while( i != 1){
+                previous = current;
+                current = current->next;
+                i--;
+            }
+            previous -> next = current -> next;
+            free(current);
+            current = NULL;
+            
+        }
+    }
+    
+   
+    
+}
+
+//FUNCTION UNTUK AUTENTIKASI AKUN==============================================================================================================
+int enterAccount(struct Node* headRef, int countAccount) {
     int i, indicator = 0;
     bool loop = false;
     char tempID[30], tempPass[100], tempPass2[100];
@@ -298,6 +439,8 @@ int enterAccount(struct Node* headRef, int countAccount) {   //BLM JALAN ERROR D
     }while(loop == 1);
     return 0;
 }
+
+//FUNCTION MENU UTAMA============================================================================================================================
 void mainMenu(struct Node** headRef, int numAccount){    //Function untuk menampilkan main menu
     int i, input, loop = false;
     struct Node *ptr = *headRef;
@@ -306,9 +449,13 @@ void mainMenu(struct Node** headRef, int numAccount){    //Function untuk menamp
     }
     
     do{
-    	quicksortArr(&ptr, 0, ptr->countPwd -1);
+        #pragma omp parallel
+        {
+            #pragma omp single //Implementasi QuickSort dengan multithreading
+            quicksortArr(&ptr, 0, ptr->countPwd -1);
+        }
         system("CLS");
-        printf("\n\t\t              ==== Welcome, s ====   \n");
+        printf("\n\t\t                ==== Welcome ====   \n");
         printf("\t\t======================================================\n");
         printf("\t\t\t%15s %s\n", "Nama : ", ptr->namaAkun);
         printf("\t\t\t%15s %s\n", "ID Akun : ", ptr->idAkun);
@@ -329,14 +476,14 @@ void mainMenu(struct Node** headRef, int numAccount){    //Function untuk menamp
                 case 1:
                     do{
                         input = savePwd(&ptr, ptr->countPwd);
-                    }while(input == 0);
+                    }while(input == 2);
                     break;
                 case 2:
-                	do{
-                		input = 0;
-	                    lookPwd(ptr);
-	                    input = viewSetting(ptr);
-                	}while(input == 0);
+                    do{
+                        input = 0;
+                        lookPwd(ptr);
+                        input = viewSetting(ptr);
+                    }while(input == 0);
                     printf("\t");
                     system("Pause");
                     break;
@@ -355,85 +502,92 @@ void mainMenu(struct Node** headRef, int numAccount){    //Function untuk menamp
             }
     }while(loop == false);
 }
-void lookPwd(struct Node* node){    
+
+//FUNCTION UNTUK MENAMPILKAN LIST PASSWORD====================================================================================
+void lookPwd(struct Node* node){
     int i, j, input;
     char tempPass[100], strength[15];
    // bool loop;
     //do{
-    	//loop = true;
-	    system("CLS");
-	    printf("\t==============================================================="
-	           "===========================================\n");
-	    printf("\t|                                            Password Lists"
-	           "                                              |\n");
-	    printf("\t==============================================================="
-	           "===========================================\n");
-	    printf("\t|%20s|%20s|%20s|%20s|%20s|\n",
-	           "No", "Nama", "ID", "Password", "Strength");
-	    printf("\t|--------------------------------------------------------------"
-	           "------------------------------------------|\n");
-	    for(i = 0; i < node->countPwd; i++){
-	        strcpy(tempPass, node->password[i].dataPwd[true]);
-	        decrypt(tempPass, strlen(tempPass), node->password[i].keyPwd);
-	        grade(tempPass, strlen(tempPass), strength);
-			for(j = 0; j < strlen(tempPass); j++){
-	        	tempPass[j] = '*';
-			}
-	        printf("\t|%20d|%20s|%20s|%20s|%20s|\n",
-	        	i+1, node->password[i].namaPwd,
-	        	node->password[i].idPwd, tempPass, strength);
-	        strcpy(tempPass, "-empty-");
-	    }
-	    printf("\t=============================================================="
-	           "============================================\n\n");
-//	}while(loop == true);
+        //loop = true;
+        system("CLS");
+        printf("\t==============================================================="
+               "===========================================\n");
+        printf("\t|                                            Password Lists"
+               "                                              |\n");
+        printf("\t==============================================================="
+               "===========================================\n");
+        printf("\t|%20s|%20s|%20s|%20s|%20s|\n",
+               "No", "Nama", "ID", "Password", "Strength");
+        printf("\t|--------------------------------------------------------------"
+               "------------------------------------------|\n");
+        for(i = 0; i < node->countPwd; i++){
+            strcpy(tempPass, node->password[i].dataPwd[true]);
+            decrypt(tempPass, strlen(tempPass), node->password[i].keyPwd);
+            grade(tempPass, strlen(tempPass), strength);
+            for(j = 0; j < strlen(tempPass); j++){
+                tempPass[j] = '*';
+            }
+            printf("\t|%20d|%20s|%20s|%20s|%20s|\n",
+                i+1, node->password[i].namaPwd,
+                node->password[i].idPwd, tempPass, strength);
+            strcpy(tempPass, "-empty-");
+        }
+        printf("\t=============================================================="
+               "============================================\n\n");
+//    }while(loop == true);
 }
+//FUNCTION UNTUK MENAMPILKAN DETAIL PASSWORD====================================================================================
 int viewSetting(struct Node* node){
-	int input;
-	char tempID[30], tempPass[100], tempPass2[100];
-	printf("\t===========================================\n"
-			   "\t|         Opsi: 1. Lihat Password         |\n"
-	           "\t|               2. Keluar                 |\n"
-	           "\t===========================================\n");
-	    printf("\t> ");
-	    scanf("%d", &input);
-	    switch(input){
-	    	case 1:
-	    		printf("\t===========================================\n");
-		        printf("\tID Akun\t\t: ");
-		        scanf(" %[^\n]s", tempID);
-		        printf("\tPassword\t: ");
-		        scanf(" %[^\n]s", tempPass);
-		        printf("\t===========================================\n");
-	    		strcpy(tempPass2, node->dataPwd);
-	            decrypt(tempPass2, strlen(tempPass2), node->key);
-	            if(strcmp(tempID, node->idAkun) == 0 && strcmp(tempPass2, tempPass) == 0){
-	                printf("\tNomor Password\t: ");
-	                scanf("%d", &input);
-	                if(input > 0 && input <= node->countPwd){
-	                	strcpy(tempPass, node->password[input-1].dataPwd[true]);
-	        			decrypt(tempPass, strlen(tempPass), node->password[input-1].keyPwd);
-	                	printf("\tPassword\t: %s\n", tempPass);
-					}
-					else
-						printf("\tPassword Tidak Ditemukan!!\n", tempPass);
-	                
-	                printf("\t===========================================\n\t");
-	                system("Pause");
-	            }
-	            else{
-	            	printf("\t\tAwas: ID atau Password Salah!!\n");
-				}
-				break;
-			case 2:
-				return 3;
-				break;
-		}
+    int input;
+    char tempID[30], tempPass[100], tempPass2[100];
+    printf("\t===========================================\n"
+               "\t|         Opsi: 1. Lihat Password         |\n"
+               "\t|               2. Keluar                 |\n"
+               "\t===========================================\n");
+        printf("\t> ");
+        scanf("%d", &input);
+        switch(input){
+            case 1:
+                printf("\t===========================================\n");
+                printf("\tID Akun\t\t: ");
+                scanf(" %[^\n]s", tempID);
+                printf("\tPassword\t: ");
+                scanf(" %[^\n]s", tempPass);
+                printf("\t===========================================\n");
+                strcpy(tempPass2, node->dataPwd);
+                decrypt(tempPass2, strlen(tempPass2), node->key);
+                if(strcmp(tempID, node->idAkun) == 0 && strcmp(tempPass2, tempPass) == 0){
+                    printf("\tNomor Password\t: ");
+                    scanf("%d", &input);
+                    if(input > 0 && input <= node->countPwd){
+                        strcpy(tempPass, node->password[input-1].dataPwd[true]);
+                        decrypt(tempPass, strlen(tempPass), node->password[input-1].keyPwd);
+                        printf("\tPassword\t: %s\n", tempPass);
+                    }
+                    else
+                        printf("\tPassword Tidak Ditemukan!!\n", tempPass);
+                    
+                    printf("\t===========================================\n\t");
+                    system("Pause");
+                }
+                else{
+                    printf("\tAwas: ID atau Password Salah!!\n\t");
+                    system("Pause");
+                }
+                break;
+            case 2:
+                return 3;
+                break;
+        }
+    return 0;
 }
+//FUNCTION UNTUK MENAMBAHKAN PASSWORD====================================================================================
 int savePwd(struct Node** node, int passNum){
 
     char tempPass[100], tempID[30], tempName[30], strength[15];
-    int tempKey = keygen(), input;
+    char tempC;
+    int tempKey = keygen(), input, i;
     system("CLS");
     printf("\n\t\t================= Simpan Password ====================\n");
     printf("\t\tNama Password\t: ");
@@ -443,21 +597,22 @@ int savePwd(struct Node** node, int passNum){
     printf("\t\tBuat Password Otomatis? (1=Y, 0=N)\n\t\t> ");
     scanf("%d", &input);
     if(input == 1){
-    	randomPasswordGeneration(20, tempPass);
-    	printf("\t\tPassword\t: %s", tempPass);
-	}
-	else{
-	    printf("\t\tPassword\t: ");
-	    scanf(" %[^\n]s", tempPass);
-	}
+        randomPasswordGeneration(20, tempPass);
+        printf("\t\tPassword\t: %s", tempPass);
+    }
+    else{
+        printf("\t\tPassword\t: ");
+        /*do{
+        if((tempC = getch()) != 13){
+            printf("*");
+            tempPass[i] = tempC;
+            i++;
+        }
+        }while(tempC != 13);*/
+        scanf(" %[^\n]s", tempPass);
+    }
         
-//    do{
-//        if((tempC = getch()) != 13){
-//            printf("*");
-//            tempPass[i] = tempC;
-//            i++;
-//        }
-//    }while(tempC != 13);
+    
         
     printf("\n\t\t======================================================\n");
     printf("\t\tMemeriksa Password...\n\t\t");
@@ -470,14 +625,16 @@ int savePwd(struct Node** node, int passNum){
     grade(tempPass, strlen(tempPass), strength);
     printf("\t\tKekuatan Password adalah -%s-", strength);
     printf("\n\t\t======================================================");
-    printf("\n\t\tLanjut? (1=Y, 0=N)\n\t\t> ");
+    printf("\n\t\tLanjut? (1=Y, 0=N, 2=Ulangi)\n\t\t> ");
     scanf("%d", &input);
         
     if(input == 0){
         return 0;
+    }else if(input == 2){
+        return 2;
     }
 
-  	(*node)->countPwd = passNum+1;
+      (*node)->countPwd = passNum+1;
     (*node)->password[passNum].changed=false;
     (*node)->password[passNum].keyPwd = tempKey;
     strcpy((*node)->password[passNum].namaPwd, tempName);
@@ -486,59 +643,64 @@ int savePwd(struct Node** node, int passNum){
     (*node)->password[passNum].keyPwd = tempKey;
     strcpy((*node)->password[passNum].dataPwd[true], tempPass);
     strcpy((*node)->password[passNum].dataPwd[false], "-empty-");
+    return 1;
 }
+
+//FUNCTION UNTUK MENGGANTI PASSWORD=============================================================================================
 void changePass(struct Node** node, int countPwd){
-    int input;
+    int input, input2;
     char tempID[30], tempPass[100], tempPass2[100];
     bool loop = true;
     do{
-    	lookPwd(*node);
-    	printf("\t===========================================\n");
-		printf("\tID Akun\t\t: ");
-		scanf(" %[^\n]s", tempID);
-		printf("\tPassword\t: ");
-		scanf(" %[^\n]s", tempPass);
-		printf("\t===========================================\n");
-		strcpy(tempPass2, (*node)->dataPwd);
-	            decrypt(tempPass2, strlen(tempPass2), (*node)->key);
-	            if(strcmp(tempID, (*node)->idAkun) == 0 && strcmp(tempPass2, tempPass) == 0){
-	                printf("\tNomor Password\t: ");
-	                scanf("%d", &input);
-	                if(input < 1 && input >= (*node)->countPwd){
-	                	strcpy(tempPass, (*node)->password[input-1].dataPwd[true]);
-					    decrypt(tempPass, strlen(tempPass), (*node)->password[input-1].keyPwd);
-					    
-					    printf("\tMasukan Password Lama: ");
-					    scanf(" %[^\n]s", tempPass2);
-					    if(strcmp(tempPass, tempPass2) != 0){
-					        printf("\tPassword Salah!!");
-	            			loop = false;
-					    }
-					    else{
-					        printf("\tMasukan password baru: ");
-						    scanf(" %[^\n]s", tempPass2);
-						    encrypt(tempPass2, strlen(tempPass2), (*node)->password[input-1].keyPwd);
-						    strcpy((*node)->password[input-1].dataPwd[false], (*node)->password[input-1].dataPwd[true]);
-						    strcpy((*node)->password[input-1].dataPwd[true], tempPass2);
-						    printf("\t===========================================\n\t");
-						    (*node)->password[input-1].changed = true;
-						    printf("\n\tPassword Lama\t: %s\n", tempPass);
-						    decrypt(tempPass2, strlen(tempPass), (*node)->password[input-1].keyPwd);
-						    printf("\tPassword Baru\t: %s\n", tempPass2);
-						    loop = false;
-						}
-					}
-					else{
-						printf("\tPassword Tidak Ditemukan!!\n", tempPass);
-	            	}
-	                printf("\t===========================================\n\t");
-	                system("Pause");
-	            }
-	            else{
-	            	printf("\t\tAwas: ID atau Password Salah!!\n");
-	            	system("Pause");
-	            	loop = false;
-				}
+        lookPwd(*node);
+        printf("\t===========================================\n");
+        printf("\tID Akun\t\t: ");
+        scanf(" %[^\n]s", tempID);
+        printf("\tPassword\t: ");
+        scanf(" %[^\n]s", tempPass);
+        printf("\t===========================================\n");
+        strcpy(tempPass2, (*node)->dataPwd);
+                decrypt(tempPass2, strlen(tempPass2), (*node)->key);
+                if(strcmp(tempID, (*node)->idAkun) == 0 && strcmp(tempPass2, tempPass) == 0){
+                    printf("\tNomor Password\t: ");
+                    scanf("%d", &input);
+                    if(input >= 1 && input <= (*node)->countPwd){
+                        strcpy(tempPass, (*node)->password[input-1].dataPwd[true]);
+                        decrypt(tempPass, strlen(tempPass), (*node)->password[input-1].keyPwd);
+                        printf("\tBuat Password Otomatis? (1=Y, 0=N)\n\t> ");
+                        scanf("%d", &input2);
+                        if(input2 == 1){
+                            randomPasswordGeneration(20, tempPass2);
+                            printf("\tPassword\t: %s\n", tempPass2);
+                        }
+                        else{
+                            printf("\tMasukan password baru: ");
+                            scanf(" %[^\n]s", tempPass2);
+                        }
+                            encrypt(tempPass2, strlen(tempPass2), (*node)->password[input-1].keyPwd);
+                            strcpy((*node)->password[input-1].dataPwd[false], (*node)->password[input-1].dataPwd[true]);
+                            strcpy((*node)->password[input-1].dataPwd[true], tempPass2);
+                        //dataPwd[false] merupakan arsip password yang tidak jadi digunakan
+                            printf("\t===========================================\n\t");
+                            (*node)->password[input-1].changed = true;
+                            printf("\n\tPassword Lama\t: %s\n", tempPass);
+                            decrypt(tempPass2, strlen(tempPass2), (*node)->password[input-1].keyPwd);
+                            printf("\tPassword Baru\t: %s\n", tempPass2);
+                            loop = false;
+                        
+                    }
+                    else{
+                        printf("\tPassword Tidak Ditemukan!!\n", tempPass);
+                    }
+                    printf("\t===========================================\n\t");
+                    system("Pause");
+                    loop = false;
+                }
+                else{
+                    printf("\t\tAwas: ID atau Password Salah!!\n");
+                    system("Pause");
+                    loop = false;
+                }
     }while (loop == true);
 }
 void helpDepan(){ //panduan penggunaan
@@ -546,12 +708,13 @@ void helpDepan(){ //panduan penggunaan
     do{
         loop = 1;
         system("CLS");
-        printf("\n\t\t              ==== OnlyPass ====   \n");
+        printf("\n\t\t            ==== Bantuan OnlyPass ====   \n");
         printf("\t\t======================================================\n"
                "\t\t|              1. Masuk Akun                         |\n"
                "\t\t|              2. Buat Akun                          |\n"
                "\t\t|              3. Bantuan                            |\n"
-               "\t\t|              4. Keluar                             |\n"
+               "\t\t|              4. Hapus Akun                         |\n"
+               "\t\t|              4. Keluar Bantuan                     |\n"
                "\t\t======================================================\n");
         printf("\t\t> ");
         scanf("%d", &input);
@@ -562,38 +725,39 @@ void helpDepan(){ //panduan penggunaan
         }
         switch(input){
             case 2:
-                printf("\t========= Panduan Fitur 'Buat Akun' ==========\n");
-                printf("\n\t================ Buat Akun ===================\n");
-                printf("\t\tNama\t\t\t: Andi\n");
-                printf("\t\tID Akun\t\t: Andi69\n");
-                printf("\t\tPassword\t\t: ********\n");
-                printf("\t======================================================\n\n");
-                printf("\tDalam menu ini, anda akan diminta untuk memasukkan\n");
-                printf("\tinput data akun. Terdapat 3 data yakni Nama,\n");
-                printf("\tID akun, dan password \n");
+                printf("\t\t========= Panduan Fitur 'Buat Akun' ==========\n");
+                printf("\n\t\t================ Buat Akun ===================\n");
+                printf("\t\t\tNama\t\t: Andi\n");
+                printf("\t\t\tID Akun\t\t: Andi69\n");
+                printf("\t\t\tPassword\t: ********\n");
+                printf("\t\t======================================================\n\n");
+                printf("\t\tDalam menu ini, anda akan diminta untuk memasukkan\n");
+                printf("\t\tinput data akun. Terdapat 3 data yakni Nama,\n");
+                printf("\t\tID akun, dan password \n\n\t\t");
                 system("Pause");
                 break;
             case 1:
     
-                printf("\t========= Panduan Fitur 'Masuk Akun' ==========\n");
-                printf("\n\t================ Masuk Akun ===================\n");
-                printf("\t\tID Akun\t\t: Andi69\n");
-                printf("\t\tPassword\t\t: ********\n");
-                printf("\t======================================================\n\n");
-                printf("\tDalam menu ini, anda akan diminta untuk login dengan\n");
-                printf("\tinput data akun yang telah  dibuat berupa ID dan Password\n");
+                printf("\t\t========= Panduan Fitur 'Masuk Akun' ==========\n");
+                printf("\n\t\t================ Masuk Akun ===================\n");
+                printf("\t\t\tID Akun\t\t: Andi69\n");
+                printf("\t\t\tPassword\t: ********\n");
+                printf("\t\t======================================================\n\n");
+                printf("\t\tDalam menu ini, anda akan diminta untuk login dengan\n");
+                printf("\t\tinput data akun yang telah  dibuat berupa ID dan Password\n\n\t\t");
                 system("Pause");
                 break;
                 
             case 3:
-                printf("\tDalam menu ini, anda akan dapat melihat bantuan  \n");
-                printf("\tdalam halaman depan sebelum masuk ke akun \n");
+                printf("\t\tDalam menu ini, anda akan dapat melihat bantuan  \n");
+                printf("\t\tdalam halaman depan sebelum masuk ke akun \n\n\t\t");
           
                 system("Pause");
                 break;
             case 4:
-                printf("\tDalam menu ini, anda akan dapat keluar dari program\n");
+                printf("\t\tDalam menu ini, anda akan dapat keluar dari program\n\n\t\t");
                 system("Pause");
+                loop = 0;
                 return;
         }
     } while (loop == 1);
@@ -604,11 +768,13 @@ void helpMain(){ //panduan penggunaan
     do{
         loop = 1;
         system("CLS");
-        printf("\n\t\t              ==== Welcome, s ====   \n");
+        printf("\n\t\t                  =MENU BANTUAN=   \n");
         printf("\t\t======================================================\n");
-        printf("\t\t\t%15s %s\n", "Nama : Ibrahim Rijal");
-        printf("\t\t\t%15s %s\n", "ID Akun : R1j4lG4nt3ng");
-        printf("\t\t%15s %d\n", "     Jumlah Password : ");
+        printf("\n\t\t                ==== Welcome ====   \n");
+        printf("\t\t======================================================\n");
+        printf("\t\t\t%15s %s\n", "Nama : ", "Ibrahim Rijal");
+        printf("\t\t\t%15s %s\n", "ID Akun : ", "R1j4lG4nt3ng");
+        printf("\t\t%15s %d\n", "Jumlah Password : "), 5;
         printf("\t\t======================================================\n"
                "\t\t|              1. Simpan Password                    |\n"
                "\t\t|              2. Lihat Password                     |\n"
@@ -620,14 +786,14 @@ void helpMain(){ //panduan penggunaan
             printf("\t\t> ");
         scanf("%d", &input);
         if (input < 1 || input > 6){
-            printf("\n\n\tTerdapat Kesalahan Input!!\n\n\t");
+            printf("\n\n\t\tTerdapat Kesalahan Input!!\n\n\t");
             system("Pause");
             return;
         }
         switch(input){
             case 1:
                 system("CLS");
-                printf("\t========= Panduan Fitur 'Simpan Password' ==========\n");
+                printf("\t\t========== Panduan Fitur 'Simpan Password' ===========\n");
                 printf("\n\t\t================= Simpan Password ====================\n");
                 printf("\t\tNama Password\t: Instagram\n");
                 printf("\t\tID Password\t: irphotoarts\n");
@@ -637,7 +803,7 @@ void helpMain(){ //panduan penggunaan
                 printf("\t\tPada bagian ini user akan diminta untuk memasukan detail dari\n");
                 printf("\t\takun yang ingin disimpan.\n");
                 printf("\t\tPada bagian ini program akan melakukan penilaian terhadap\n");
-                printf("\t\tpassword yang dimasukan user.\n");
+                printf("\t\tpassword yang dimasukan user.\n\n\t\t");
                 system("Pause");
                 break;
             case 2:
@@ -661,8 +827,8 @@ void helpMain(){ //panduan penggunaan
                 }
                 printf("\t=============================================================="
                        "=======================\n");
-                printf("\t\tPada bagian ini user dapat melihat semua password yang telah \n");
-                printf("\t\tdiinput.\n");
+                printf("\tPada bagian ini user dapat melihat semua password yang telah \n");
+                printf("\tdiinput.\n\n]t]t");
                 system("Pause");
                 break;
                 
@@ -670,7 +836,7 @@ void helpMain(){ //panduan penggunaan
                 system("CLS");
                 printf("\t========= Panduan Fitur 'Cari' ==========\n");
                 printf("\n\t================ Cari ===================\n");
-                printf("Masukan search: insta \n");
+                printf("\tMasukan search: insta \n");
                 
                 printf("\t=============================================================="
                        "=======================\n");
@@ -688,8 +854,8 @@ void helpMain(){ //panduan penggunaan
                 
                 printf("\t=============================================================="
                        "=======================\n");
-                printf("\t\tPada bagian ini user dapat mencari nama password yang \n");
-                printf("\t\tdiinginkan.\n");
+                printf("\tPada bagian ini user dapat mencari nama password yang \n");
+                printf("\tdiinginkan.\n\n\t");
                 system("Pause");
                 break;
             case 4:
@@ -714,20 +880,22 @@ void helpMain(){ //panduan penggunaan
                 printf("\t=============================================================="
                        "=======================\n");
                 
-                printf("Pilih password yang ingin diganti: ");
-                printf("\t\tPada bagian ini user dapat mengubah password yang \n");
-                printf("\t\tdiinginkan.\n");
+                printf("\tPilih password yang ingin diganti: ");
+                printf("\n\n\t\tPada bagian ini user dapat mengubah password yang \n");
+                printf("\t\tdiinginkan.\n\n\t");
                 system("Pause");
                 break;
                 
             case 5:
                 system("CLS");
-                printf("\t\tMenu ini akan menampilkan bantuan untuk main menu\n");
+                printf("\t\tMenu ini akan menampilkan bantuan untuk main menu\n\n\t\t");
                 system("Pause");
+                break;
             case 6:
                 system("CLS");
-                printf("\t\tMenu ini akan keluar dari akun\n");
+                printf("\t\tMenu ini akan keluar dari akun\n\n\t\t");
                 system("Pause");
+                loop = 0;
         }
     } while (loop == 1);
     
@@ -735,40 +903,42 @@ void helpMain(){ //panduan penggunaan
 //====================================================================================
 //SORTING DAN SEARCHING
 //==========================================================
-void searchPass(struct Node* node){ //gw ganti jd strcasestr
+void searchPass(struct Node* node){
     char input [100];
     char tempPass[100], strength[15];
     int i, j;
     system("CLS");
-    printf("Masukan search: ");
+    printf("\n\t================ Cari ===================\n");
+    printf("\tMasukan search: ");
     scanf(" %[^\n]s", input);
     printf("\n\t==============================================================="
-	           "===========================================\n");
-	    printf("\t|                                            Password Lists"
-	           "                                              |\n");
-	    printf("\t==============================================================="
-	           "===========================================\n");
-	    printf("\t|%20s|%20s|%20s|%20s|%20s|\n",
-	           "No", "Nama", "ID", "Password", "Strength");
-	    printf("\t|--------------------------------------------------------------"
-	           "------------------------------------------|\n");
+               "===========================================\n");
+        printf("\t|                                            Password Lists"
+               "                                              |\n");
+        printf("\t==============================================================="
+               "===========================================\n");
+        printf("\t|%20s|%20s|%20s|%20s|%20s|\n",
+               "No", "Nama", "ID", "Password", "Strength");
+        printf("\t|--------------------------------------------------------------"
+               "------------------------------------------|\n");
     
     for(i = 0; i < node->countPwd; i++){
-    	if(Strcasestr(node->password[i].namaPwd, input)){
-	        strcpy(tempPass, node->password[i].dataPwd[true]);
-	        decrypt(tempPass, strlen(tempPass), node->password[i].keyPwd);
-	        grade(tempPass, strlen(tempPass), strength);
-			for(j = 0; j < strlen(tempPass); j++){
-	        	tempPass[j] = '*';
-			}
-	        printf("\t|%20d|%20s|%20s|%20s|%20s|\n",
-	        	i+1, node->password[i].namaPwd,
-	        	node->password[i].idPwd, tempPass, strength);
-	        strcpy(tempPass, "-empty-");
-	    }
-	}
-	    printf("\t=============================================================="
-	           "============================================\n\n");
+        if(Strcasestr(node->password[i].namaPwd, input)){
+            strcpy(tempPass, node->password[i].dataPwd[true]);
+            decrypt(tempPass, strlen(tempPass), node->password[i].keyPwd);
+            grade(tempPass, strlen(tempPass), strength);
+            for(j = 0; j < strlen(tempPass); j++){
+                tempPass[j] = '*';
+            }
+            printf("\t|%20d|%20s|%20s|%20s|%20s|\n",
+                i+1, node->password[i].namaPwd,
+                node->password[i].idPwd, tempPass, strength);
+            strcpy(tempPass, "-empty-");
+        }
+    }
+    printf("\t=============================================================="
+           "============================================\n\n");
+    system("Pause");
 }
 char* Strcasestr(const char* haystack, const char* needle) {    //fungsi strcasestr
     if (!needle[0]) return (char*) haystack;
@@ -802,6 +972,7 @@ void quicksortArr(struct Node** node,int start, int end){
           while(strcmp((*node)->password[j].namaPwd, (*node)->password[pivot].namaPwd) > 0 && j > start)
             j--;
          if(i<j){
+             //Swapping untuk tiap data dalam struct
              swapChar((*node)->password[i].namaPwd, (*node)->password[j].namaPwd);
              swapChar((*node)->password[i].idPwd, (*node)->password[j].idPwd);
              swapChar((*node)->password[i].dataPwd[false], (*node)->password[j].dataPwd[false]);
@@ -810,23 +981,34 @@ void quicksortArr(struct Node** node,int start, int end){
              swapBool(&(*node)->password[i].changed, &(*node)->password[j].changed);
          }
       }
-       swapChar((*node)->password[pivot].namaPwd, (*node)->password[j].namaPwd);
-       swapChar((*node)->password[pivot].idPwd, (*node)->password[j].idPwd);
-       swapChar((*node)->password[pivot].dataPwd[false], (*node)->password[j].dataPwd[false]);
-       swapChar((*node)->password[pivot].dataPwd[true], (*node)->password[j].dataPwd[true]);
-       swapInt(&(*node)->password[pivot].keyPwd, &(*node)->password[j].keyPwd);
-       swapBool(&(*node)->password[pivot].changed, &(*node)->password[j].changed);
-       
+           swapChar((*node)->password[pivot].namaPwd, (*node)->password[j].namaPwd);
+           swapChar((*node)->password[pivot].idPwd, (*node)->password[j].idPwd);
+           swapChar((*node)->password[pivot].dataPwd[false], (*node)->password[j].dataPwd[false]);
+           swapChar((*node)->password[pivot].dataPwd[true], (*node)->password[j].dataPwd[true]);
+           swapInt(&(*node)->password[pivot].keyPwd, &(*node)->password[j].keyPwd);
+           swapBool(&(*node)->password[pivot].changed, &(*node)->password[j].changed);
+ 
+    #pragma omp task
       quicksortArr(node,start,j-1);
-      quicksortArr(node,j+1,end);
+    #pragma omp task
+       quicksortArr(node,j+1,end);
+    #pragma omp taskwait
 
    }
 }
 void swapChar (char a[100], char b[100]){
     char temp[100];
-    strcpy(temp,a);
-    strcpy(a, b);
-    strcpy(b, temp);
+    char aTemp[100];
+    char bTemp[100];
+    strcpy(aTemp,a);
+    strcpy(bTemp,b);
+    //string dipindahkan ke variabel lokal untuk menghindari tabrakan dalam mengakses memori
+    strcpy(temp,aTemp);
+    strcpy(aTemp,bTemp);
+    strcpy(bTemp,temp);
+    
+    strcpy(a, aTemp);
+    strcpy(b, bTemp);
 }
 void swapInt(int *a, int *b){
     int temp;
@@ -843,52 +1025,66 @@ void swapBool(bool *a, bool *b){
 //====================================================================================
 //MANAJEMEN PASSWORD
 //====================================================================================
-void encrypt(char pass[100], unsigned long len, int key){ 
+
+//ENKRIPSI DAN DEKRIPSI MENGGUNAKAN ALGOTITMA CAESAR
+//DIMANA KARAKTER AKAN DIGESER SEJUMLAH KEY KE SEBELAH KANAN
+void encrypt(char pass[100], unsigned long len, int key){
     int i;
+    #pragma omp parallel for
     for(i = 0; i < len; i++){
         pass[i] = pass[i] + key;
     }
 }
 void decrypt(char pass[100], unsigned long len, int key){
     int i;
+    #pragma omp parallel for
     for(i = 0; i < len; i++){
         pass[i] = pass[i] - key;
     }
 }
+
+//FUNCTION GRADE PASSWORD BERDASARKAN KOMBINASI KARAKTER==============================================================
 char grade(char pass[100], unsigned long len, char tempStrength[]){
-    int grade, i;
+    int grade = 0, i;
     char status[5][15] = {"Sangat Lemah", "Lemah", "Sedang", "Kuat", "Sangat Kuat"};
-    bool enoughChar, hasLower, hasUpper, hasNumber, hasSymbol;
+    bool strength[5] = {false};
+    #pragma omp parallel for
     for (i = 0; i < len; i++){
         if(pass[i] >= 48 && pass[i] <= 57){
-            hasNumber = true;
+            strength[0] = true;
         }
         if(pass[i] >= 97 && pass[i] <= 122){
-            hasLower = true;
+            strength[1] = true;
         }
         if(pass[i] >= 65 && pass[i] <= 90){
-            hasUpper = true;
+            strength[2] = true;
         }
         if(pass[i] >= 33 && pass[i] <= 47){
-            hasSymbol = true;
+            strength[3] = true;
         }
         if(pass[i] >= 58 && pass[i] <= 64){
-            hasSymbol = true;
+            strength[3] = true;
         }
         if(pass[i] >= 91 && pass[i] <= 96){
-            hasSymbol = true;
+            strength[3] = true;
         }
         if( len >= 8){
-            enoughChar = true;
+            strength[4] = true;
         }
     }
-    grade = enoughChar + hasLower + hasSymbol + hasNumber + hasUpper;
+    #pragma omp parallel for reduction (+ : grade)
+    for(i = 0; i<5; i++){
+        //#pragma omp critical
+        grade += strength[i];
+    }
     if (strcasecmp(pass, "PakDodiGanteng") == 0){
         grade = 5;
     }
     strcpy(tempStrength, status[grade-1]);
     return *tempStrength;
 }
+
+//FUNCTION UNTUK MEMBUAT PASSWORD RANDOM============================================================================
 void randomPasswordGeneration(int N, char pass[100]){
     int i = 0;
     int randomizer = 0;
@@ -922,11 +1118,12 @@ void randomPasswordGeneration(int N, char pass[100]){
         
     }
 }
+
+//KEYGEN UNTUK ENKRIPSI PASSWORD
 int keygen(){
     int key;
     srand((unsigned int)(time(NULL)));
-    //for(i = 0; i < 100; i++){
-   key = rand() %20 ;
+       key = rand() %20 ;
     if(key == 0){
         key = 18;
     }
@@ -934,115 +1131,6 @@ int keygen(){
 }
 //====================================================================================
 
-//UNUSED========================================================
-void printNode(struct Node* node){
-    char temp[100];
-    strcpy(temp, node->dataPwd);
-    decrypt(temp, strlen(temp), node->key);
-    printf("Akun\t: %s\n", node->namaAkun);
-    printf("ID\t: %s\n", node->idAkun);
-    printf("Password: %s\n", temp);
-}
-void printList(struct Node* node){
-    char temp[100];
-    
-    
-    //printf("\n%sstrlen: %lu", temp, strlen(temp));
-    
-    while (node != NULL) {
-        strcpy(temp, node->dataPwd);
-        decrypt(temp, strlen(temp), node->key);
-        printf("Akun\t: %s\n", node->namaAkun);
-        printf("ID\t: %s\n", node->idAkun);
-        printf("Password: %s\n", temp);
-        node = node->next;
-    }
-    printf("\n");
-}
-//==================================QUICKSORT LINKED LIST=============================
-void push(struct Node** head_ref, char new_data[100],
-          char new_ID[100], char new_name[100], int new_key){
-    /* 1. allocate node */
-    struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
- 
-    /* 2. put in the data  */
-    strcpy(new_node->dataPwd, new_data );
-    strcpy(new_node->idAkun, new_ID );
-    strcpy(new_node->namaAkun, new_name );
-    new_node -> key = new_key;
-    
-    
-    //new_node->data  = new_data;
- 
-    /* 3. Make next of new node as head */
-    new_node->next = (*head_ref);
- 
-    /* 4. move the head to point to the new node */
-    (*head_ref)    = new_node;
-}
-struct Node* getTail(struct Node* cur){
-    if(cur != NULL){
-        while (cur != NULL && cur->next != NULL)
-            cur = cur->next;
-    }
-    return cur;
-}
-struct Node* partition(struct Node* head, struct Node* end,
-                       struct Node** newHead,
-                       struct Node** newEnd){
-    struct Node* pivot = end;
-    struct Node *prev = NULL, *cur = head, *tail = pivot;
-    while (cur != pivot) {
-        if (strcmp(cur->namaAkun, pivot->namaAkun)<0) {
-            // First node that has a value less than the
-            // pivot - becomes the new head
-            if ((*newHead) == NULL)
-                (*newHead) = cur;
- 
-            prev = cur;
-            cur = cur->next;
-        }
-        else // If cur node is greater than pivot
-        {
-            // Move cur node to next of tail, and change
-            // tail
-            if (prev)
-                prev->next = cur->next;
-            struct Node* tmp = cur->next;
-            cur->next = NULL;
-            tail->next = cur;
-            tail = cur;
-            cur = tmp;
-        }
-    }
-    if ((*newHead) == NULL)
-        (*newHead) = pivot;
-    (*newEnd) = tail;
-    return pivot;
-}
-struct Node* quickSortRecur(struct Node* head, struct Node* end){
-    // base condition
-    if (!head || head == end)
-        return head;
-    struct Node *newHead = NULL, *newEnd = NULL;
-    struct Node* pivot
-        = partition(head, end, &newHead, &newEnd);
-    if (newHead != pivot) {
-        struct Node* tmp = newHead;
-        while (tmp->next != pivot)
-            tmp = tmp->next;
-        tmp->next = NULL;
-        newHead = quickSortRecur(newHead, tmp);
-        tmp = getTail(newHead);
-        tmp->next = pivot;
-    }
-    pivot->next = quickSortRecur(pivot->next, newEnd);
-    return newHead;
-}
-void quickSort(struct Node** headRef){
-    (*headRef) = quickSortRecur(*headRef, getTail(*headRef));
-    return;
-}
 
 
 
