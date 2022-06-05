@@ -6,6 +6,9 @@
 #include <stdbool.h>
 #include <conio.h>
 #include <ctype.h>
+//Proyek Akhir Kelompok 02 Proglan 02
+//Rizki Awanta Jordhie 	2106655034
+//Ibrahim Rijal			2106644434
 
 typedef struct listPassword{
     char dataPwd[2][100];
@@ -157,74 +160,7 @@ void startAnimation(){                  //Function untuk menampilkan animasi ope
     Sleep(200);
     system("Pause");
 }
-int deleteAcc(struct Node** headRef, int countAccount) {   //BLM JALAN ERROR DI NODE NGECEK ID/PASSWORDNYA
-    int i, indicator = 0;
-    bool loop = false;
-    char tempID[30], tempPass[100], tempPass2[100];
-    struct Node *ptr = *headRef;
-    struct Node *current = *headRef;
-    struct Node *previous = *headRef;
-    if (*headRef == NULL){
-        printf("TIDAK ADA AKUN");
-    }
-    else{
-        do{
-            i = 0;
-            ptr = *headRef;
-            indicator = 0;
-            system("CLS");
-            printf("\n\t\t              ==== OnlyPass ====   \n");
-            printf("\t\t======================================================\n");
-            printf("\t\tID Akun\t\t: ");
-            scanf(" %[^\n]s", tempID);
-            printf("\t\tPassword\t: ");
-            scanf(" %[^\n]s", tempPass);
-            printf("\t\t======================================================\n");
-            
-            while(ptr != NULL && i != countAccount && indicator == 0){
-                strcpy(tempPass2, ptr->dataPwd);
-                decrypt(tempPass2, strlen(tempPass2), ptr->key);
-                if(strcmp(tempID, ptr->idAkun)==0 && strcmp(tempPass2, tempPass)==0){
-                    indicator = 1;
-                    i++;
-                }
-                else{
-                    i++;
-                    ptr = ptr->next;
-                }
-            }
-            if(ptr == NULL){
-                loop = true;
-            }
-            if(loop == true){
-                printf("\t\tAwas: ID atau Password Salah!!\n");
-                printf("\n\t\tCoba Lagi? (1=Y, 0=N)\n\t\t> ");
-                scanf("%d", &i);
-                if(i == 1){
-                    loop = true;
-                    return 1;
-                }
-            }
-        }while(loop == true);
-        if(i == 1){
-            *headRef = current -> next;
-            free(current);
-            current = NULL;
-            return 0;
-        }
-        else{
-            while( i != 1){
-                previous = current;
-                current = current->next;
-                i--;
-            }
-            previous -> next = current -> next;
-            free(current);
-            current = NULL;
-            return 0;
-        }
-    }
-}
+
 int main(){
     int input, i, loop = 0, countAccount = 0;
     readCount(&countAccount);
@@ -245,7 +181,6 @@ int main(){
     }
     Sleep(800);
     startAnimation();
-    //readFile(&head, countAccount);
        do{
         do{
             system("CLS");
@@ -376,6 +311,88 @@ int addAccount (struct Node** headRef){ //Function untuk menambahkan akun berupa
             
     last->next = new_node;
     return 1;
+}
+int deleteAcc(struct Node** headRef, int countAccount) {   
+    int i, indicator = 0;
+    bool loop = false;
+    char tempID[30], tempPass[100], tempPass2[100];
+    struct Node *ptr = *headRef;
+    struct Node *current = *headRef;
+    struct Node *previous = *headRef;
+    if (*headRef == NULL){
+        printf("TIDAK ADA AKUN");
+    }
+    else{
+        do{
+            i = 0;
+            ptr = *headRef;
+            indicator = 0;
+            system("CLS");
+            printf("\n\t\t              ==== Hapus Akun ====   \n");
+            printf("\t\t======================================================\n");
+            printf("\t\tID Akun\t\t: ");
+            scanf(" %[^\n]s", tempID);
+            printf("\t\tPassword\t: ");
+            scanf(" %[^\n]s", tempPass);
+            printf("\t\t======================================================\n");
+            
+            while(ptr != NULL && i != countAccount && indicator == 0){
+                strcpy(tempPass2, ptr->dataPwd);
+                decrypt(tempPass2, strlen(tempPass2), ptr->key);
+                if(strcmp(tempID, ptr->idAkun)==0 && strcmp(tempPass2, tempPass)==0){
+                    indicator = 1;
+                    i++;
+                }
+                else{
+                    i++;
+                    ptr = ptr->next;
+                }
+            }
+            if(ptr == NULL){
+                loop = true;
+            }
+            if(loop == true){
+                printf("\t\tAwas: ID atau Password Salah!!\n");
+                printf("\n\t\tCoba Lagi? (1=Y, 0=N)\n\t\t> ");
+                scanf("%d", &i);
+                if(i == 1){
+                    loop = true;
+                    return 1; //return 1 mengulang opsi menghapus akun
+                } else{
+                	return 2;
+				}
+            }
+        }while(loop == true);
+        if(i == 1){
+        	printf("\n\t\t\tHapus Akun? (1=Y, 0=N)\n\t\t> ");
+            scanf("%d", &i);
+            if(i != 1){
+                    loop = true;
+                    return 2;
+            }
+            *headRef = current -> next;
+            free(current);
+            current = NULL;
+            return 0;
+        }
+        else{
+            while( i != 1){
+                previous = current;
+                current = current->next;
+                i--;
+            }
+            printf("\n\t\t\tHapus Akun? (1=Y, 0=N)\n\t\t> ");
+            scanf("%d", &i);
+            if(i != 1){
+                    loop = true;
+                    return 2; //return 2 cancel hapus akun
+            }
+            previous -> next = current -> next;
+            free(current);
+            current = NULL;
+            return 0;//return 0 menandakan hapus akun sukses
+        }
+    }
 }
 int enterAccount(struct Node* headRef, int countAccount) {   
     int i, indicator = 0;
