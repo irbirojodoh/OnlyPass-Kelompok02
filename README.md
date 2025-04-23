@@ -1,7 +1,5 @@
 # OnlyPass - Secure Password Manager 🔒
 
-![CLI Interface Demo](https://via.placeholder.com/800x400.png?text=CLI+Interface+Preview)
-
 A command-line password management solution with basic encryption and account protection features. Developed as a final project for programming fundamentals course.
 
 ## Key Features ✨
